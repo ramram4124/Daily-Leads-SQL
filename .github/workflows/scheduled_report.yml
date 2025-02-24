@@ -33,4 +33,10 @@ jobs:
         EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
         EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
         EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-      run: python main.py 
+      run: |
+        echo "Checking environment variables (sanitized):"
+        echo "DB_HOST is set: ${{ secrets.DB_HOST != '' }}"
+        echo "DB_PORT is set: ${{ secrets.DB_PORT != '' }}"
+        echo "DB_NAME is set: ${{ secrets.DB_NAME != '' }}"
+        echo "DB_USER is set: ${{ secrets.DB_USER != '' }}"
+        python main.py 

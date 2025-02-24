@@ -13,7 +13,8 @@ db_params = {
     'user': os.environ.get('DB_USER', 'postgres.qcvfmiqzkfhinxlhknnd'),
     'password': os.environ.get('DB_PASSWORD', 'gaadimech123'),
     'host': os.environ.get('DB_HOST', 'aws-0-ap-south-1.pooler.supabase.com'),
-    'port': os.environ.get('DB_PORT', '6543')
+    'port': os.environ.get('DB_PORT', '6543'),
+    'sslmode': 'require'  # Add SSL mode for Supabase
 }
 
 def send_email(table_html):
@@ -58,8 +59,15 @@ def send_email(table_html):
 
 def fetch_user_leads_data():
     try:
+        print("Attempting database connection with parameters:")
+        print(f"Host: {db_params['host']}")
+        print(f"Port: {db_params['port']}")
+        print(f"Database: {db_params['dbname']}")
+        print(f"User: {db_params['user']}")
+        
         # Establish connection
         conn = psycopg2.connect(**db_params)
+        print("Database connection successful!")
         cursor = conn.cursor()
         
         # Your SQL query
