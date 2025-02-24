@@ -9,6 +9,7 @@ on:
 jobs:
   generate-report:
     runs-on: ubuntu-latest
+    environment: production
     
     env:
       DB_HOST: ${{ secrets.DB_HOST }}
