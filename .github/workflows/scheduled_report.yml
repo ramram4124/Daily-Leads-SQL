@@ -1,4 +1,4 @@
-name: Scheduled Lead Reports
+name: Scheduled Lead Report
 
 on:
   schedule:
