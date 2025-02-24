@@ -3,9 +3,13 @@ from tabulate import tabulate
 import pandas as pd
 from datetime import datetime
 import os
+from dotenv import load_dotenv
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Database connection parameters from environment variables
 db_params = {
@@ -16,6 +20,25 @@ db_params = {
     'port': os.environ.get('DB_PORT'),
     'sslmode': 'require'  # Add SSL mode for Supabase
 }
+
+def check_environment_variables():
+    required_vars = [
+        'DB_NAME', 'DB_USER', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT',
+        'EMAIL_SENDER', 'EMAIL_RECEIVER', 'EMAIL_PASSWORD'
+    ]
+    missing_vars = [var for var in required_vars if not os.environ.get(var)]
+    
+    if missing_vars:
+        print("\nError: Missing required environment variables:")
+        for var in missing_vars:
+            print(f"- {var}")
+        print("\nPlease set these environment variables before running the script.")
+        print("\nYou can set them in your terminal like this:")
+        print("export DB_HOST='your-host'")
+        print("export DB_PORT='your-port'")
+        print("... etc ...")
+        return False
+    return True
 
 def send_email(table_html):
     sender_email = os.environ.get('EMAIL_SENDER')
@@ -58,6 +81,9 @@ def send_email(table_html):
         print(traceback.format_exc())
 
 def fetch_user_leads_data():
+    if not check_environment_variables():
+        return
+
     try:
         print("Attempting database connection with parameters:")
         print(f"Host: {db_params['host']}")
