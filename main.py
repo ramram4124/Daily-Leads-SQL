@@ -3,13 +3,9 @@ from tabulate import tabulate
 import pandas as pd
 from datetime import datetime
 import os
-from dotenv import load_dotenv
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-
-# Load environment variables from .env file
-load_dotenv()
 
 # Database connection parameters from environment variables
 db_params = {
