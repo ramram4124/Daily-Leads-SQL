@@ -6,6 +6,18 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import logging
+import sys
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('logs/execution.log')
+    ]
+)
 
 # Database connection parameters from environment variables
 db_params = {
@@ -25,15 +37,11 @@ def check_environment_variables():
     missing_vars = [var for var in required_vars if not os.environ.get(var)]
     
     if missing_vars:
-        print("\nError: Missing required environment variables:")
+        logging.error("Missing required environment variables:")
         for var in missing_vars:
-            print(f"- {var}")
-        print("\nPlease set these environment variables before running the script.")
-        print("\nYou can set them in your terminal like this:")
-        print("export DB_HOST='your-host'")
-        print("export DB_PORT='your-port'")
-        print("... etc ...")
+            logging.error(f"- {var}")
         return False
+    logging.info("All required environment variables are set")
     return True
 
 def send_email(table_html):
@@ -41,10 +49,7 @@ def send_email(table_html):
     receiver_email = os.environ.get('EMAIL_RECEIVER')
     password = os.environ.get('EMAIL_PASSWORD')
 
-    # Add debug prints
-    print(f"Sending email from: {sender_email}")
-    print(f"Sending email to: {receiver_email}")
-    print(f"Password length: {len(password) if password else 0}")
+    logging.info(f"Sending email from: {sender_email} to: {receiver_email}")
 
     msg = MIMEMultipart()
     msg['Subject'] = f'Lead Report - {datetime.now().strftime("%Y-%m-%d %H:%M")}'
@@ -63,18 +68,16 @@ def send_email(table_html):
     msg.attach(MIMEText(html_content, 'html'))
 
     try:
-        print("Attempting to connect to SMTP server...")
+        logging.info("Connecting to SMTP server...")
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-            print("Connected to SMTP server")
+            logging.info("Connected to SMTP server")
             server.login(sender_email, password)
-            print("Logged in successfully")
+            logging.info("Logged in successfully")
             server.send_message(msg)
-            print("Email sent successfully!")
+            logging.info("Email sent successfully!")
     except Exception as e:
-        print(f"Failed to send email: {str(e)}")
-        # Print more detailed error information
-        import traceback
-        print(traceback.format_exc())
+        logging.error(f"Failed to send email: {str(e)}")
+        logging.error(traceback.format_exc())
 
 def fetch_user_leads_data():
     if not check_environment_variables():
