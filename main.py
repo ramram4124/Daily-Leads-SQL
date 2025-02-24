@@ -131,6 +131,7 @@ def send_email(table_html, df):
     except Exception as e:
         logging.error(f"Failed to send email: {str(e)}")
         logging.error(traceback.format_exc())
+
 def send_email(table_html, df):
     sender_email = os.environ.get('EMAIL_SENDER')
     # Split receiver emails by comma and strip whitespace
@@ -172,7 +173,7 @@ def send_email(table_html, df):
         logging.error(traceback.format_exc())
 
 
-def fetch_user_leads_data):
+def fetch_user_leads_data:
     if not check_environment_variables():
         return
 
