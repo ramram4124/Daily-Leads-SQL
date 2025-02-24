@@ -21,6 +21,13 @@ jobs:
       EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
 
     steps:
+    # Add this step BEFORE running the script to verify secrets
+    - name: Verify Environment Variables
+      run: |
+      echo "DB_HOST: ${{ secrets.DB_HOST }}"
+      echo "DB_USER: ${{ secrets.DB_USER }}"
+      # Repeat for other variables (values will be masked in logs)
+
     - name: Checkout code
       uses: actions/checkout@v4
 
