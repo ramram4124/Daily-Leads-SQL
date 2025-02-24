@@ -81,13 +81,13 @@ jobs:
     - name: Setup SSL Certificate
       run: |
         # Create cert directory
-        mkdir -p ~/.postgresql
-        # Download Supabase's root certificate
-        curl -o ~/.postgresql/root.crt https://raw.githubusercontent.com/supabase/supabase/master/docker/volumes/db/ssl/root.crt
-        # Set permissions
-        chmod 600 ~/.postgresql/root.crt
-        # Export the cert path
-        echo "PGSSLCERT=~/.postgresql/root.crt" >> $GITHUB_ENV
+        sudo mkdir -p /etc/ssl/certs
+        # Download and append Supabase CA cert to system bundle
+        curl https://raw.githubusercontent.com/supabase/supabase/master/docker/volumes/db/ssl/root.crt | sudo tee -a /etc/ssl/certs/ca-certificates.crt
+        # Set environment variables
+        echo "PGSSLROOTCERT=/etc/ssl/certs/ca-certificates.crt" >> $GITHUB_ENV
+        echo "PGSSLMODE=verify-ca" >> $GITHUB_ENV
+
 
     - name: Run report script
       run: python main.py > logs/execution.log 2>&1
