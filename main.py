@@ -52,11 +52,12 @@ def check_environment_variables():
 
 def create_table_image(df):
     """Convert DataFrame to a styled image"""
-    # Set the style correctly
+    # Set the style
     sns.set_style("whitegrid")
     
     # Create figure and axis with appropriate sizing
-    fig, ax = plt.subplots(figsize=(12, len(df) * 0.5 + 1))
+    # Increased figure size
+    fig, ax = plt.subplots(figsize=(14, len(df) * 0.7 + 1))
     
     # Remove axes
     ax.set_axis_off()
@@ -72,8 +73,10 @@ def create_table_image(df):
     
     # Style the table
     table.auto_set_font_size(False)
-    table.set_fontsize(9)
-    table.scale(1.2, 1.5)
+    # Increased font size from 9 to 12
+    table.set_fontsize(12)
+    # Adjusted scale factors for better proportions
+    table.scale(1.5, 1.8)
     
     # Adjust layout
     plt.tight_layout()
@@ -85,6 +88,7 @@ def create_table_image(df):
     plt.close()
     
     return buf
+
 
 
 
