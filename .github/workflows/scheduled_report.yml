@@ -20,6 +20,9 @@ jobs:
       EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
       EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
       EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+      PGSSLMODE: 'require'  # Add SSL mode for Postgres connection
+      # Optional: If you need to specify a custom root certificate
+      # PGSSLROOTCERT: '/path/to/root.crt'
 
     steps:
     - name: Verify Environment Variables
@@ -75,6 +78,12 @@ jobs:
 
     - name: Create log directory
       run: mkdir -p logs
+
+    - name: Setup SSL Certificate
+      run: |
+        # Download Supabase SSL certificate if needed
+        # curl -o /path/to/root.crt https://raw.githubusercontent.com/supabase/postgres/master/certs/prod.crt
+        # This step might not be needed if using PGSSLMODE='require'
 
     - name: Run report script
       run: python main.py > logs/execution.log 2>&1
