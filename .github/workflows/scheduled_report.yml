@@ -2,14 +2,14 @@ name: Scheduled Lead Report
 
 on:
   schedule:
-    - cron: '30 5,8,10,12 * * *'  # UTC times: 05:30, 08:30, 10:30, 12:30
+    - cron: "30 5,8,10,12 * * *" # UTC times: 05:30, 08:30, 10:30, 12:30
   workflow_dispatch:
 
 jobs:
   generate-report:
     runs-on: ubuntu-latest
     environment: production
-    
+
     env:
       DB_HOST: ${{ secrets.DB_HOST }}
       DB_PORT: ${{ secrets.DB_PORT }}
@@ -19,49 +19,57 @@ jobs:
       EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
       EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
       EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-      PGSSLMODE: 'verify-ca'
-      PGSSLROOTCERT: '/etc/ssl/certs/ca-certificates.crt'
+      PGSSLMODE: "verify-ca"
+      PGSSLROOTCERT: "/etc/ssl/certs/ca-certificates.crt"
 
     steps:
-    - name: Check environment secrets
-      run: |
-        required_secrets=(
-          DB_HOST DB_PORT DB_NAME 
-          DB_USER DB_PASSWORD
-          EMAIL_SENDER EMAIL_RECEIVER EMAIL_PASSWORD
-        )
-        for secret in "${required_secrets[@]}"; do
-          if [ -z "${!secret}" ]; then
-            echo "::error::Missing secret: $secret"
-            exit 1
-          fi
-        done
+      - name: Check environment secrets
+        run: |
+          required_secrets=(
+            DB_HOST DB_PORT DB_NAME 
+            DB_USER DB_PASSWORD
+            EMAIL_SENDER EMAIL_RECEIVER EMAIL_PASSWORD
+          )
+          for secret in "${required_secrets[@]}"; do
+            if [ -z "${!secret}" ]; then
+              echo "::error::Missing secret: $secret"
+              exit 1
+            fi
+          done
 
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-    - name: Setup SSL Certificate
-      run: |
-        sudo mkdir -p /etc/ssl/certs
-        echo "${{ secrets.SUPABASE_SSL_CERT }}" | base64 --decode | sudo tee -a /etc/ssl/certs/ca-certificates.crt >/dev/null
+      - name: Setup SSL Certificate
+        run: |
+          sudo mkdir -p /etc/ssl/certs
+          echo "${{ secrets.SUPABASE_SSL_CERT }}" | base64 --decode | sudo tee -a /etc/ssl/certs/ca-certificates.crt >/dev/null
 
-    - name: Run report script
-      run: python main.py > logs/execution.log 2>&1
+      - name: Create log directory
+        run: mkdir -p logs # Optional but recommended for clarity
 
-    - name: Upload logs
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: execution-logs
-        path: logs/
-        retention-days: 5
+      - name: Run report script
+        run: |
+          mkdir -p logs  # Redundant but failsafe
+          python main.py > logs/execution.log 2>&1
+
+      - name: Debug directory structure
+        run: ls -la
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: execution-logs
+          path: logs/
+          retention-days: 5
