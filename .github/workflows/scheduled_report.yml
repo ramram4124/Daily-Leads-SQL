@@ -23,14 +23,20 @@ jobs:
 
     steps:
     - name: Verify Environment Variables
+      # Verifying presence of environment secrets (not plain env variables) for security
       run: |
-        echo "Checking environment variables..."
-        echo "DB_HOST is set: ${{ secrets.DB_HOST != '' }}"
-        echo "DB_USER is set: ${{ secrets.DB_USER != '' }}"
-        echo "DB_NAME is set: ${{ secrets.DB_NAME != '' }}"
-        echo "DB_PORT is set: ${{ secrets.DB_PORT != '' }}"
-        echo "EMAIL_SENDER is set: ${{ secrets.EMAIL_SENDER != '' }}"
-        echo "EMAIL_RECEIVER is set: ${{ secrets.EMAIL_RECEIVER != '' }}"
+        if [[ -z "${{ secrets.DB_HOST }}" ]] || \
+           [[ -z "${{ secrets.DB_USER }}" ]] || \
+           [[ -z "${{ secrets.DB_NAME }}" ]] || \
+           [[ -z "${{ secrets.DB_PORT }}" ]] || \
+           [[ -z "${{ secrets.EMAIL_SENDER }}" ]] || \
+           [[ -z "${{ secrets.EMAIL_RECEIVER }}" ]] || \
+           [[ -z "${{ secrets.DB_PASSWORD }}" ]] || \
+           [[ -z "${{ secrets.EMAIL_PASSWORD }}" ]]; then
+          echo "Error: One or more required secrets are not set"
+          exit 1
+        fi
+        echo "All required secrets are properly configured"
 
     - name: Checkout code
       uses: actions/checkout@v4
