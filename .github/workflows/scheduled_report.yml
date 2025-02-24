@@ -25,17 +25,39 @@ jobs:
     - name: Verify Environment Variables
       # Verifying presence of environment secrets (not plain env variables) for security
       run: |
-        if [[ -z "${{ secrets.DB_HOST }}" ]] || \
-           [[ -z "${{ secrets.DB_USER }}" ]] || \
-           [[ -z "${{ secrets.DB_NAME }}" ]] || \
-           [[ -z "${{ secrets.DB_PORT }}" ]] || \
-           [[ -z "${{ secrets.EMAIL_SENDER }}" ]] || \
-           [[ -z "${{ secrets.EMAIL_RECEIVER }}" ]] || \
-           [[ -z "${{ secrets.DB_PASSWORD }}" ]] || \
-           [[ -z "${{ secrets.EMAIL_PASSWORD }}" ]]; then
-          echo "Error: One or more required secrets are not set"
+        missing_secrets=()
+        
+        if [[ -z "${{ secrets.DB_HOST }}" ]]; then
+          missing_secrets+=("DB_HOST")
+        fi
+        if [[ -z "${{ secrets.DB_USER }}" ]]; then
+          missing_secrets+=("DB_USER")
+        fi
+        if [[ -z "${{ secrets.DB_NAME }}" ]]; then
+          missing_secrets+=("DB_NAME")
+        fi
+        if [[ -z "${{ secrets.DB_PORT }}" ]]; then
+          missing_secrets+=("DB_PORT")
+        fi
+        if [[ -z "${{ secrets.DB_PASSWORD }}" ]]; then
+          missing_secrets+=("DB_PASSWORD")
+        fi
+        if [[ -z "${{ secrets.EMAIL_SENDER }}" ]]; then
+          missing_secrets+=("EMAIL_SENDER")
+        fi
+        if [[ -z "${{ secrets.EMAIL_RECEIVER }}" ]]; then
+          missing_secrets+=("EMAIL_RECEIVER")
+        fi
+        if [[ -z "${{ secrets.EMAIL_PASSWORD }}" ]]; then
+          missing_secrets+=("EMAIL_PASSWORD")
+        fi
+        
+        if [ ${#missing_secrets[@]} -ne 0 ]; then
+          echo "Error: The following secrets are not set:"
+          printf '%s\n' "${missing_secrets[@]}"
           exit 1
         fi
+        
         echo "All required secrets are properly configured"
 
     - name: Checkout code
