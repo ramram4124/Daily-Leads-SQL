@@ -24,7 +24,7 @@ logging.basicConfig(
     ]
 )
 
-# Database connection parameters from environment variables
+# Database connection parameters
 db_params = {
     'dbname': os.environ.get('DB_NAME'),
     'user': os.environ.get('DB_USER'),
@@ -50,14 +50,15 @@ def check_environment_variables():
     logging.info("All required environment variables are set")
     return True
 
-def create_table_image(df):
+def create_table_image(df, title):
     """Convert DataFrame to a styled image"""
-    # Set the style
     sns.set_style("whitegrid")
     
     # Create figure and axis with appropriate sizing
-    # Increased figure size
     fig, ax = plt.subplots(figsize=(14, len(df) * 0.7 + 1))
+    
+    # Add title
+    plt.title(title, pad=20, size=14, weight='bold')
     
     # Remove axes
     ax.set_axis_off()
@@ -73,9 +74,7 @@ def create_table_image(df):
     
     # Style the table
     table.auto_set_font_size(False)
-    # Increased font size from 9 to 12
     table.set_fontsize(12)
-    # Adjusted scale factors for better proportions
     table.scale(1.5, 1.8)
     
     # Adjust layout
@@ -89,28 +88,26 @@ def create_table_image(df):
     
     return buf
 
-
-
-
-def send_email(table_html, df):
+def send_email(leads_df, followups_df):
     sender_email = os.environ.get('EMAIL_SENDER')
-    # Split receiver emails by comma and strip whitespace
     receiver_emails = [email.strip() for email in os.environ.get('EMAIL_RECEIVER').split(',')]
     password = os.environ.get('EMAIL_PASSWORD')
 
     logging.info(f"Sending email from: {sender_email} to: {', '.join(receiver_emails)}")
 
     msg = MIMEMultipart()
-    msg['Subject'] = f'Lead Report - {datetime.now().strftime("%Y-%m-%d %H:%M")}'
+    msg['Subject'] = f'Daily Reports - {datetime.now().strftime("%Y-%m-%d %H:%M")}'
     msg['From'] = sender_email
     msg['To'] = ', '.join(receiver_emails)
 
     html_content = f"""
     <html>
         <body>
-            <h2>Lead Report</h2>
-            <p>Please find the lead report attached as an image.</p>
-            <img src="cid:table_image">
+            <h2>Daily Reports - {datetime.now().strftime("%Y-%m-%d")}</h2>
+            <h3>1. Lead Generation Report</h3>
+            <img src="cid:leads_image">
+            <h3>2. Follow-up Report</h3>
+            <img src="cid:followups_image">
         </body>
     </html>
     """
@@ -118,11 +115,17 @@ def send_email(table_html, df):
     msg.attach(MIMEText(html_content, 'html'))
 
     try:
-        img_buf = create_table_image(df)
-        img = MIMEImage(img_buf.read())
-        img.add_header('Content-ID', '<table_image>')
-        img.add_header('Content-Disposition', 'attachment', filename='lead_report.jpg')
-        msg.attach(img)
+        # Attach leads report image
+        leads_buf = create_table_image(leads_df, "Lead Generation Report")
+        leads_img = MIMEImage(leads_buf.read())
+        leads_img.add_header('Content-ID', '<leads_image>')
+        msg.attach(leads_img)
+
+        # Attach followups report image
+        followups_buf = create_table_image(followups_df, "Follow-up Report")
+        followups_img = MIMEImage(followups_buf.read())
+        followups_img.add_header('Content-ID', '<followups_image>')
+        msg.attach(followups_img)
 
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             server.login(sender_email, password)
@@ -131,47 +134,6 @@ def send_email(table_html, df):
     except Exception as e:
         logging.error(f"Failed to send email: {str(e)}")
         logging.error(traceback.format_exc())
-
-def send_email(table_html, df):
-    sender_email = os.environ.get('EMAIL_SENDER')
-    # Split receiver emails by comma and strip whitespace
-    receiver_emails = [email.strip() for email in os.environ.get('EMAIL_RECEIVER').split(',')]
-    password = os.environ.get('EMAIL_PASSWORD')
-
-    logging.info(f"Sending email from: {sender_email} to: {', '.join(receiver_emails)}")
-
-    msg = MIMEMultipart()
-    msg['Subject'] = f'Lead Report - {datetime.now().strftime("%Y-%m-%d %H:%M")}'
-    msg['From'] = sender_email
-    msg['To'] = ', '.join(receiver_emails)
-
-    html_content = f"""
-    <html>
-        <body>
-            <h2>Lead Report</h2>
-            <p>Please find the lead report attached as an image.</p>
-            <img src="cid:table_image">
-        </body>
-    </html>
-    """
-    
-    msg.attach(MIMEText(html_content, 'html'))
-
-    try:
-        img_buf = create_table_image(df)
-        img = MIMEImage(img_buf.read())
-        img.add_header('Content-ID', '<table_image>')
-        img.add_header('Content-Disposition', 'attachment', filename='lead_report.jpg')
-        msg.attach(img)
-
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-            server.login(sender_email, password)
-            server.sendmail(sender_email, receiver_emails, msg.as_string())
-            logging.info("Email sent successfully!")
-    except Exception as e:
-        logging.error(f"Failed to send email: {str(e)}")
-        logging.error(traceback.format_exc())
-
 
 def fetch_user_leads_data():
     if not check_environment_variables():
@@ -184,13 +146,12 @@ def fetch_user_leads_data():
         print(f"Database: {db_params['dbname']}")
         print(f"User: {db_params['user']}")
         
-        # Establish connection
         conn = psycopg2.connect(**db_params)
         print("Database connection successful!")
         cursor = conn.cursor()
         
-        # Your SQL query
-        query = """
+        # Leads generation query
+        leads_query = """
         SELECT 
             u.username,
             SUM(CASE 
@@ -222,28 +183,63 @@ def fetch_user_leads_data():
         ORDER BY total_calls DESC;
         """
         
-        # Execute query
-        cursor.execute(query)
+        # Followups query
+        followups_query = """
+        WITH followup_stats AS (
+            SELECT 
+                u.name as telecaller_name,
+                COUNT(l.id) as total_followups_assigned,
+                COUNT(CASE 
+                    WHEN DATE(l.modified_at) = CURRENT_DATE 
+                    THEN 1 
+                    END) as followups_completed
+            FROM 
+                "user" u
+                LEFT JOIN lead l ON l.creator_id = u.id
+            WHERE 
+                DATE(l.followup_date) = CURRENT_DATE
+                AND u.is_admin = false
+            GROUP BY 
+                u.id, u.name
+        )
+        SELECT 
+            TO_CHAR(CURRENT_DATE, 'DDth-Mon') as report_date,
+            telecaller_name,
+            total_followups_assigned,
+            followups_completed,
+            (total_followups_assigned - followups_completed) as pending_followups,
+            ROUND((followups_completed::numeric / NULLIF(total_followups_assigned, 0) * 100)::numeric, 2) as completion_percentage
+        FROM 
+            followup_stats
+        ORDER BY 
+            completion_percentage DESC;
+        """
         
-        # Fetch results
-        results = cursor.fetchall()
+        # Execute leads query
+        cursor.execute(leads_query)
+        leads_results = cursor.fetchall()
+        leads_columns = [desc[0] for desc in cursor.description]
+        leads_df = pd.DataFrame(leads_results, columns=leads_columns)
         
-        # Get column names
-        columns = [desc[0] for desc in cursor.description]
+        # Execute followups query
+        cursor.execute(followups_query)
+        followups_results = cursor.fetchall()
+        followups_columns = [desc[0] for desc in cursor.description]
+        followups_df = pd.DataFrame(followups_results, columns=followups_columns)
         
-        # Create DataFrame
-        df = pd.DataFrame(results, columns=columns)
+        # Print results to console
+        print("\nLead Generation Report:", datetime.now().strftime("%Y-%m-%d"), ":\n")
+        print(tabulate(leads_df, headers='keys', tablefmt='pretty', showindex=False))
         
-        # Generate both console output and HTML
-        print("\nResults for", datetime.now().strftime("%Y-%m-%d"), ":\n")
-        print(tabulate(df, headers='keys', tablefmt='pretty', showindex=False))
+        print("\nFollow-up Report:", datetime.now().strftime("%Y-%m-%d"), ":\n")
+        print(tabulate(followups_df, headers='keys', tablefmt='pretty', showindex=False))
         
-        # Generate HTML table and send email
-        html_table = df.to_html(index=False, classes='table table-striped')
-        send_email(html_table, df)
+        # Send email with both reports
+        send_email(leads_df, followups_df)
         
     except Exception as e:
         print(f"Error: {e}")
+        logging.error(traceback.format_exc())
     
     finally:
         if 'conn' in locals():
@@ -252,5 +248,3 @@ def fetch_user_leads_data():
 
 if __name__ == "__main__":
     fetch_user_leads_data()
-
-    #oqenmtwayihewaws
