@@ -10,6 +10,16 @@ jobs:
   generate-report:
     runs-on: ubuntu-latest
     
+    env:
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_PORT: ${{ secrets.DB_PORT }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+      EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+      EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+
     steps:
     - uses: actions/checkout@v2
     
@@ -24,19 +34,4 @@ jobs:
         pip install psycopg2-binary pandas tabulate
     
     - name: Run report script
-      env:
-        DB_USER: ${{ secrets.DB_USER }}
-        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-        DB_HOST: ${{ secrets.DB_HOST }}
-        DB_PORT: ${{ secrets.DB_PORT }}
-        DB_NAME: ${{ secrets.DB_NAME }}
-        EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
-        EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
-        EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-      run: |
-        echo "Checking environment variables (sanitized):"
-        echo "DB_HOST is set: ${{ secrets.DB_HOST != '' }}"
-        echo "DB_PORT is set: ${{ secrets.DB_PORT != '' }}"
-        echo "DB_NAME is set: ${{ secrets.DB_NAME != '' }}"
-        echo "DB_USER is set: ${{ secrets.DB_USER != '' }}"
-        python main.py 
+      run: python main.py 

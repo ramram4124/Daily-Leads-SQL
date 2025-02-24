@@ -9,11 +9,11 @@ from email.mime.multipart import MIMEMultipart
 
 # Database connection parameters from environment variables
 db_params = {
-    'dbname': os.environ.get('DB_NAME', 'postgres'),
-    'user': os.environ.get('DB_USER', 'postgres.qcvfmiqzkfhinxlhknnd'),
-    'password': os.environ.get('DB_PASSWORD', 'gaadimech123'),
-    'host': os.environ.get('DB_HOST', 'aws-0-ap-south-1.pooler.supabase.com'),
-    'port': os.environ.get('DB_PORT', '6543'),
+    'dbname': os.environ.get('DB_NAME'),
+    'user': os.environ.get('DB_USER'),
+    'password': os.environ.get('DB_PASSWORD'),
+    'host': os.environ.get('DB_HOST'),
+    'port': os.environ.get('DB_PORT'),
     'sslmode': 'require'  # Add SSL mode for Supabase
 }
 
