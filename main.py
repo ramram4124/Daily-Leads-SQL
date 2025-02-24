@@ -51,11 +51,23 @@ def check_environment_variables():
     return True
 
 def create_table_image(df, title):
-    """Convert DataFrame to a styled image"""
+    """Convert DataFrame to a styled image with wrapped column headers"""
     sns.set_style("whitegrid")
     
+    # Function to wrap text
+    def wrap_text(text, width=15):
+        import textwrap
+        return '\n'.join(textwrap.wrap(str(text), width=width))
+    
+    # Wrap column headers
+    wrapped_columns = [wrap_text(col) for col in df.columns]
+    
+    # Calculate appropriate figure height based on content and wrapped headers
+    max_header_lines = max(len(str(col).split('\n')) for col in wrapped_columns)
+    fig_height = len(df) * 0.7 + (max_header_lines * 0.3) + 1
+    
     # Create figure and axis with appropriate sizing
-    fig, ax = plt.subplots(figsize=(14, len(df) * 0.7 + 1))
+    fig, ax = plt.subplots(figsize=(14, fig_height))
     
     # Add title
     plt.title(title, pad=20, size=14, weight='bold')
@@ -63,10 +75,10 @@ def create_table_image(df, title):
     # Remove axes
     ax.set_axis_off()
     
-    # Create table
+    # Create table with wrapped headers
     table = ax.table(
         cellText=df.values,
-        colLabels=df.columns,
+        colLabels=wrapped_columns,
         cellLoc='center',
         loc='center',
         colColours=['#f2f2f2'] * len(df.columns)
@@ -76,6 +88,11 @@ def create_table_image(df, title):
     table.auto_set_font_size(False)
     table.set_fontsize(12)
     table.scale(1.5, 1.8)
+    
+    # Adjust row heights for wrapped headers
+    for cell in table._cells:
+        if cell[0] == 0:  # Header row
+            table._cells[cell].set_height(0.15 * max_header_lines)
     
     # Adjust layout
     plt.tight_layout()
