@@ -21,6 +21,11 @@ def send_email(table_html):
     receiver_email = os.environ.get('EMAIL_RECEIVER')
     password = os.environ.get('EMAIL_PASSWORD')
 
+    # Add debug prints
+    print(f"Sending email from: {sender_email}")
+    print(f"Sending email to: {receiver_email}")
+    print(f"Password length: {len(password) if password else 0}")
+
     msg = MIMEMultipart()
     msg['Subject'] = f'Lead Report - {datetime.now().strftime("%Y-%m-%d %H:%M")}'
     msg['From'] = sender_email
@@ -38,12 +43,18 @@ def send_email(table_html):
     msg.attach(MIMEText(html_content, 'html'))
 
     try:
+        print("Attempting to connect to SMTP server...")
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            print("Connected to SMTP server")
             server.login(sender_email, password)
+            print("Logged in successfully")
             server.send_message(msg)
-        print("Email sent successfully!")
+            print("Email sent successfully!")
     except Exception as e:
-        print(f"Failed to send email: {e}")
+        print(f"Failed to send email: {str(e)}")
+        # Print more detailed error information
+        import traceback
+        print(traceback.format_exc())
 
 def fetch_user_leads_data():
     try:

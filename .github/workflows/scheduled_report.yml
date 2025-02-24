@@ -30,4 +30,7 @@ jobs:
         DB_HOST: ${{ secrets.DB_HOST }}
         DB_PORT: ${{ secrets.DB_PORT }}
         DB_NAME: ${{ secrets.DB_NAME }}
+        EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+        EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+        EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
       run: python main.py 
