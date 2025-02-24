@@ -1,4 +1,5 @@
 import psycopg2
+import traceback
 from tabulate import tabulate
 import pandas as pd
 from datetime import datetime
@@ -51,16 +52,15 @@ def check_environment_variables():
 
 def create_table_image(df):
     """Convert DataFrame to a styled image"""
-    # Set the style
-    plt.style.use('seaborn')
+    # Set the style using seaborn directly instead of plt.style
+    sns.set_style("whitegrid")[1]
     
     # Create figure and axis with appropriate sizing
     fig, ax = plt.subplots(figsize=(12, len(df) * 0.5 + 1))
     
-    # Remove axes
+    # Rest of the function remains the same
     ax.set_axis_off()
     
-    # Create table
     table = ax.table(
         cellText=df.values,
         colLabels=df.columns,
@@ -69,21 +69,19 @@ def create_table_image(df):
         colColours=['#f2f2f2'] * len(df.columns)
     )
     
-    # Style the table
     table.auto_set_font_size(False)
     table.set_fontsize(9)
     table.scale(1.2, 1.5)
     
-    # Adjust layout
     plt.tight_layout()
     
-    # Save to bytes buffer
     buf = io.BytesIO()
     plt.savefig(buf, format='jpg', dpi=300, bbox_inches='tight')
     buf.seek(0)
     plt.close()
     
     return buf
+
 
 def send_email(table_html, df):
     sender_email = os.environ.get('EMAIL_SENDER')
