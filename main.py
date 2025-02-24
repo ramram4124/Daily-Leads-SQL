@@ -26,7 +26,7 @@ db_params = {
     'password': os.environ.get('DB_PASSWORD'),
     'host': os.environ.get('DB_HOST'),
     'port': os.environ.get('DB_PORT'),
-    'sslmode': 'require'  # Add SSL mode for Supabase
+    'sslmode': 'require',
     'sslrootcert': '/etc/ssl/certs/ca-certificates.crt' 
 }
 
