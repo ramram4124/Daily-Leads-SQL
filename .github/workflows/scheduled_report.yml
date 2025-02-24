@@ -2,7 +2,6 @@ name: Scheduled Lead Report
 
 on:
   schedule:
-    # Runs at 11:00, 14:00, 16:00, and 18:00 IST (UTC+5:30)
     - cron: '30 5,8,10,12 * * *'  # UTC times: 05:30, 08:30, 10:30, 12:30
   workflow_dispatch:
 
@@ -20,52 +19,28 @@ jobs:
       EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
       EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
       EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-      PGSSLMODE: 'verify-ca'  # Change from 'require' to 'verify-ca'
-      PGSSLCERT: './root.crt'  # Path to the certificate file
+      PGSSLMODE: 'verify-ca'
+      PGSSLROOTCERT: '/etc/ssl/certs/ca-certificates.crt'
 
     steps:
-    - name: Verify Environment Variables
-      # Verifying presence of environment secrets (not plain env variables) for security
+    - name: Check environment secrets
       run: |
-        missing_secrets=()
-        
-        if [[ -z "${{ secrets.DB_HOST }}" ]]; then
-          missing_secrets+=("DB_HOST")
-        fi
-        if [[ -z "${{ secrets.DB_USER }}" ]]; then
-          missing_secrets+=("DB_USER")
-        fi
-        if [[ -z "${{ secrets.DB_NAME }}" ]]; then
-          missing_secrets+=("DB_NAME")
-        fi
-        if [[ -z "${{ secrets.DB_PORT }}" ]]; then
-          missing_secrets+=("DB_PORT")
-        fi
-        if [[ -z "${{ secrets.DB_PASSWORD }}" ]]; then
-          missing_secrets+=("DB_PASSWORD")
-        fi
-        if [[ -z "${{ secrets.EMAIL_SENDER }}" ]]; then
-          missing_secrets+=("EMAIL_SENDER")
-        fi
-        if [[ -z "${{ secrets.EMAIL_RECEIVER }}" ]]; then
-          missing_secrets+=("EMAIL_RECEIVER")
-        fi
-        if [[ -z "${{ secrets.EMAIL_PASSWORD }}" ]]; then
-          missing_secrets+=("EMAIL_PASSWORD")
-        fi
-        
-        if [ ${#missing_secrets[@]} -ne 0 ]; then
-          echo "Error: The following secrets are not set:"
-          printf '%s\n' "${missing_secrets[@]}"
-          exit 1
-        fi
-        
-        echo "All required secrets are properly configured"
+        required_secrets=(
+          DB_HOST DB_PORT DB_NAME 
+          DB_USER DB_PASSWORD
+          EMAIL_SENDER EMAIL_RECEIVER EMAIL_PASSWORD
+        )
+        for secret in "${required_secrets[@]}"; do
+          if [ -z "${!secret}" ]; then
+            echo "::error::Missing secret: $secret"
+            exit 1
+          fi
+        done
 
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python
+    - name: Set up Python 3.10
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
@@ -75,25 +50,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Create log directory
-      run: mkdir -p logs
-
     - name: Setup SSL Certificate
       run: |
-        # Create cert directory
         sudo mkdir -p /etc/ssl/certs
-        # Download and append Supabase CA cert to system bundle
-        curl https://raw.githubusercontent.com/supabase/supabase/master/docker/volumes/db/ssl/root.crt | sudo tee -a /etc/ssl/certs/ca-certificates.crt
-        # Set environment variables
-        echo "PGSSLROOTCERT=/etc/ssl/certs/ca-certificates.crt" >> $GITHUB_ENV
-        echo "PGSSLMODE=verify-ca" >> $GITHUB_ENV
-
+        echo "${{ secrets.SUPABASE_SSL_CERT }}" | base64 --decode | sudo tee -a /etc/ssl/certs/ca-certificates.crt >/dev/null
 
     - name: Run report script
       run: python main.py > logs/execution.log 2>&1
 
-    - name: Archive logs
-      if: always()  # This ensures logs are uploaded even if script fails
+    - name: Upload logs
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: execution-logs
