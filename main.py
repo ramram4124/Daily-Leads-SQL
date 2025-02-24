@@ -94,17 +94,17 @@ def create_table_image(df):
 
 def send_email(table_html, df):
     sender_email = os.environ.get('EMAIL_SENDER')
-    receiver_email = os.environ.get('EMAIL_RECEIVER')
+    # Split receiver emails by comma and strip whitespace
+    receiver_emails = [email.strip() for email in os.environ.get('EMAIL_RECEIVER').split(',')]
     password = os.environ.get('EMAIL_PASSWORD')
 
-    logging.info(f"Sending email from: {sender_email} to: {receiver_email}")
+    logging.info(f"Sending email from: {sender_email} to: {', '.join(receiver_emails)}")
 
     msg = MIMEMultipart()
     msg['Subject'] = f'Lead Report - {datetime.now().strftime("%Y-%m-%d %H:%M")}'
     msg['From'] = sender_email
-    msg['To'] = receiver_email
+    msg['To'] = ', '.join(receiver_emails)
 
-    # Create the HTML content
     html_content = f"""
     <html>
         <body>
@@ -117,27 +117,62 @@ def send_email(table_html, df):
     
     msg.attach(MIMEText(html_content, 'html'))
 
-    # Create and attach the image
     try:
-        # Generate table image
         img_buf = create_table_image(df)
         img = MIMEImage(img_buf.read())
         img.add_header('Content-ID', '<table_image>')
         img.add_header('Content-Disposition', 'attachment', filename='lead_report.jpg')
         msg.attach(img)
 
-        logging.info("Connecting to SMTP server...")
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-            logging.info("Connected to SMTP server")
             server.login(sender_email, password)
-            logging.info("Logged in successfully")
-            server.send_message(msg)
+            server.sendmail(sender_email, receiver_emails, msg.as_string())
+            logging.info("Email sent successfully!")
+    except Exception as e:
+        logging.error(f"Failed to send email: {str(e)}")
+        logging.error(traceback.format_exc())
+def send_email(table_html, df):
+    sender_email = os.environ.get('EMAIL_SENDER')
+    # Split receiver emails by comma and strip whitespace
+    receiver_emails = [email.strip() for email in os.environ.get('EMAIL_RECEIVER').split(',')]
+    password = os.environ.get('EMAIL_PASSWORD')
+
+    logging.info(f"Sending email from: {sender_email} to: {', '.join(receiver_emails)}")
+
+    msg = MIMEMultipart()
+    msg['Subject'] = f'Lead Report - {datetime.now().strftime("%Y-%m-%d %H:%M")}'
+    msg['From'] = sender_email
+    msg['To'] = ', '.join(receiver_emails)
+
+    html_content = f"""
+    <html>
+        <body>
+            <h2>Lead Report</h2>
+            <p>Please find the lead report attached as an image.</p>
+            <img src="cid:table_image">
+        </body>
+    </html>
+    """
+    
+    msg.attach(MIMEText(html_content, 'html'))
+
+    try:
+        img_buf = create_table_image(df)
+        img = MIMEImage(img_buf.read())
+        img.add_header('Content-ID', '<table_image>')
+        img.add_header('Content-Disposition', 'attachment', filename='lead_report.jpg')
+        msg.attach(img)
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(sender_email, password)
+            server.sendmail(sender_email, receiver_emails, msg.as_string())
             logging.info("Email sent successfully!")
     except Exception as e:
         logging.error(f"Failed to send email: {str(e)}")
         logging.error(traceback.format_exc())
 
-def fetch_user_leads_data():
+
+def fetch_user_leads_data):
     if not check_environment_variables():
         return
 
