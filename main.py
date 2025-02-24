@@ -88,7 +88,7 @@ def create_table_image(df, title):
     
     return buf
 
-def send_email(leads_df, followups_df):
+def send_email(leads_df, status_df, followups_df):
     sender_email = os.environ.get('EMAIL_SENDER')
     receiver_emails = [email.strip() for email in os.environ.get('EMAIL_RECEIVER').split(',')]
     password = os.environ.get('EMAIL_PASSWORD')
@@ -106,7 +106,9 @@ def send_email(leads_df, followups_df):
             <h2>Daily Reports - {datetime.now().strftime("%Y-%m-%d")}</h2>
             <h3>1. Lead Generation Report</h3>
             <img src="cid:leads_image">
-            <h3>2. Follow-up Report</h3>
+            <h3>2. Status-wise Report</h3>
+            <img src="cid:status_image">
+            <h3>3. Follow-up Report</h3>
             <img src="cid:followups_image">
         </body>
     </html>
@@ -120,6 +122,12 @@ def send_email(leads_df, followups_df):
         leads_img = MIMEImage(leads_buf.read())
         leads_img.add_header('Content-ID', '<leads_image>')
         msg.attach(leads_img)
+
+        # Attach status report image
+        status_buf = create_table_image(status_df, "Status-wise Report")
+        status_img = MIMEImage(status_buf.read())
+        status_img.add_header('Content-ID', '<status_image>')
+        msg.attach(status_img)
 
         # Attach followups report image
         followups_buf = create_table_image(followups_df, "Follow-up Report")
@@ -140,14 +148,7 @@ def fetch_user_leads_data():
         return
 
     try:
-        print("Attempting database connection with parameters:")
-        print(f"Host: {db_params['host']}")
-        print(f"Port: {db_params['port']}")
-        print(f"Database: {db_params['dbname']}")
-        print(f"User: {db_params['user']}")
-        
         conn = psycopg2.connect(**db_params)
-        print("Database connection successful!")
         cursor = conn.cursor()
         
         # Leads generation query
@@ -158,13 +159,11 @@ def fetch_user_leads_data():
                 WHEN DATE(l.created_at) = CURRENT_DATE THEN 1 
                 ELSE 0 
             END) as leads_created_today,
-            
             SUM(CASE 
                 WHEN DATE(l.modified_at) = CURRENT_DATE 
                 AND DATE(l.created_at) != DATE(l.modified_at) THEN 1 
                 ELSE 0 
             END) as leads_modified_today,
-            
             SUM(CASE 
                 WHEN DATE(l.created_at) = CURRENT_DATE THEN 1 
                 WHEN DATE(l.modified_at) = CURRENT_DATE 
@@ -181,6 +180,30 @@ def fetch_user_leads_data():
             ELSE 0 
         END) > 0
         ORDER BY total_calls DESC;
+        """
+
+        # Status-wise query
+        status_query = """
+        SELECT 
+            u.name as telecaller_name,
+            COUNT(CASE WHEN l.status = 'Open' THEN 1 END) as open_calls,
+            COUNT(CASE WHEN l.status = 'Completed' THEN 1 END) as completed_calls,
+            COUNT(CASE WHEN l.status = 'Feedback' THEN 1 END) as feedback_calls,
+            COUNT(CASE WHEN l.status = 'Confirmed' THEN 1 END) as confirmed_calls,
+            COUNT(CASE WHEN l.status = 'Not Interested' THEN 1 END) as not_interested_calls,
+            COUNT(CASE WHEN DATE(l.created_at) = CURRENT_DATE THEN 1 END) as new_leads_today,
+            COUNT(CASE WHEN DATE(l.modified_at) = CURRENT_DATE AND DATE(l.created_at) != CURRENT_DATE THEN 1 END) as followup_calls,
+            COUNT(CASE WHEN DATE(l.modified_at) = CURRENT_DATE THEN 1 END) as total_calls_made
+        FROM 
+            "user" u
+            LEFT JOIN lead l ON l.creator_id = u.id
+        WHERE 
+            (DATE(l.created_at) = CURRENT_DATE OR DATE(l.modified_at) = CURRENT_DATE)
+            AND u.is_admin = false
+        GROUP BY 
+            u.id, u.name
+        ORDER BY 
+            total_calls_made DESC;
         """
         
         # Followups query
@@ -215,27 +238,28 @@ def fetch_user_leads_data():
             completion_percentage DESC;
         """
         
-        # Execute leads query
+        # Execute queries and create DataFrames
         cursor.execute(leads_query)
-        leads_results = cursor.fetchall()
-        leads_columns = [desc[0] for desc in cursor.description]
-        leads_df = pd.DataFrame(leads_results, columns=leads_columns)
+        leads_df = pd.DataFrame(cursor.fetchall(), columns=[desc[0] for desc in cursor.description])
         
-        # Execute followups query
+        cursor.execute(status_query)
+        status_df = pd.DataFrame(cursor.fetchall(), columns=[desc[0] for desc in cursor.description])
+        
         cursor.execute(followups_query)
-        followups_results = cursor.fetchall()
-        followups_columns = [desc[0] for desc in cursor.description]
-        followups_df = pd.DataFrame(followups_results, columns=followups_columns)
+        followups_df = pd.DataFrame(cursor.fetchall(), columns=[desc[0] for desc in cursor.description])
         
         # Print results to console
         print("\nLead Generation Report:", datetime.now().strftime("%Y-%m-%d"), ":\n")
         print(tabulate(leads_df, headers='keys', tablefmt='pretty', showindex=False))
         
+        print("\nStatus-wise Report:", datetime.now().strftime("%Y-%m-%d"), ":\n")
+        print(tabulate(status_df, headers='keys', tablefmt='pretty', showindex=False))
+        
         print("\nFollow-up Report:", datetime.now().strftime("%Y-%m-%d"), ":\n")
         print(tabulate(followups_df, headers='keys', tablefmt='pretty', showindex=False))
         
-        # Send email with both reports
-        send_email(leads_df, followups_df)
+        # Send email with all reports
+        send_email(leads_df, status_df, followups_df)
         
     except Exception as e:
         print(f"Error: {e}")
