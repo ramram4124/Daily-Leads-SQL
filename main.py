@@ -8,6 +8,10 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import logging
 import sys
+import matplotlib.pyplot as plt
+import seaborn as sns
+from email.mime.image import MIMEImage
+import io
 
 # Set up logging
 logging.basicConfig(
@@ -45,7 +49,43 @@ def check_environment_variables():
     logging.info("All required environment variables are set")
     return True
 
-def send_email(table_html):
+def create_table_image(df):
+    """Convert DataFrame to a styled image"""
+    # Set the style
+    plt.style.use('seaborn')
+    
+    # Create figure and axis with appropriate sizing
+    fig, ax = plt.subplots(figsize=(12, len(df) * 0.5 + 1))
+    
+    # Remove axes
+    ax.set_axis_off()
+    
+    # Create table
+    table = ax.table(
+        cellText=df.values,
+        colLabels=df.columns,
+        cellLoc='center',
+        loc='center',
+        colColours=['#f2f2f2'] * len(df.columns)
+    )
+    
+    # Style the table
+    table.auto_set_font_size(False)
+    table.set_fontsize(9)
+    table.scale(1.2, 1.5)
+    
+    # Adjust layout
+    plt.tight_layout()
+    
+    # Save to bytes buffer
+    buf = io.BytesIO()
+    plt.savefig(buf, format='jpg', dpi=300, bbox_inches='tight')
+    buf.seek(0)
+    plt.close()
+    
+    return buf
+
+def send_email(table_html, df):
     sender_email = os.environ.get('EMAIL_SENDER')
     receiver_email = os.environ.get('EMAIL_RECEIVER')
     password = os.environ.get('EMAIL_PASSWORD')
@@ -57,18 +97,28 @@ def send_email(table_html):
     msg['From'] = sender_email
     msg['To'] = receiver_email
 
+    # Create the HTML content
     html_content = f"""
     <html>
         <body>
             <h2>Lead Report</h2>
-            {table_html}
+            <p>Please find the lead report attached as an image.</p>
+            <img src="cid:table_image">
         </body>
     </html>
     """
     
     msg.attach(MIMEText(html_content, 'html'))
 
+    # Create and attach the image
     try:
+        # Generate table image
+        img_buf = create_table_image(df)
+        img = MIMEImage(img_buf.read())
+        img.add_header('Content-ID', '<table_image>')
+        img.add_header('Content-Disposition', 'attachment', filename='lead_report.jpg')
+        msg.attach(img)
+
         logging.info("Connecting to SMTP server...")
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             logging.info("Connected to SMTP server")
@@ -147,7 +197,7 @@ def fetch_user_leads_data():
         
         # Generate HTML table and send email
         html_table = df.to_html(index=False, classes='table table-striped')
-        send_email(html_table)
+        send_email(html_table, df)
         
     except Exception as e:
         print(f"Error: {e}")

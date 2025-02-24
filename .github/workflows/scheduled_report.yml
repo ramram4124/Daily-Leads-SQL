@@ -55,6 +55,10 @@ jobs:
           sudo mkdir -p /etc/ssl/certs
           echo "${{ secrets.SUPABASE_SSL_CERT }}" | base64 --decode | sudo tee -a /etc/ssl/certs/ca-certificates.crt >/dev/null
 
+      - name: Decode SSL Certificate
+        run: |
+          echo "${{ secrets.SUPABASE_SSL_CERT }}" | base64 --decode > supabase-cert.pem
+          
       - name: Create log directory
         run: mkdir -p logs # Optional but recommended for clarity
 
